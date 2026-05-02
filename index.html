@@ -196,6 +196,11 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .stats-title{font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:20px}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm)}
+.stat-ex-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+.stat-ex-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.stat-ex-name{font-size:15px;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-ex-pct{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.stat-ex-meta{font-size:12px;color:var(--text-3);margin-top:2px}
 .stat-value{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;margin-bottom:3px;letter-spacing:-1px}
 .stat-value.orange{color:var(--accent)}
 .stat-value.green{color:var(--green)}
@@ -374,6 +379,7 @@ function R(){
   <div class="tabs">
     <button class="tab ${view==='today'?'active':''}" onclick="sv('today')">Dnes</button>
     <button class="tab ${view==='calendar'?'active':''}" onclick="sv('calendar')">Kalendár</button>
+    <button class="tab ${view==='stats'?'active':''}" onclick="sv('stats')">Štatistiky</button>
     <button class="tab ${view==='manage'?'active':''}" onclick="sv('manage')">Cviky</button>
   </div>
   </div><div class="content">`;
@@ -490,9 +496,8 @@ function R(){
       let cls="cal-none",extra="";
       if(!isFuture){
         if(skip&&done.length===0){cls="cal-skip";extra=`<div class="cal-skip-dot"></div>`}
-        else if(ratio>0&&ratio<.5)cls="cal-partial";
-        else if(ratio>=.5&&ratio<1)cls="cal-half";
         else if(ratio>=1)cls="cal-full";
+        else if(ratio>0)cls="cal-partial";
       }
       h+=`<div class="cal-cell ${cls} ${isT?'today':''} ${isFuture?'cal-future':''}" onclick="${isFuture?'':` openSkip('${k}')`}">
         <span class="cal-day-num">${d}</span>
@@ -520,6 +525,42 @@ function R(){
     }
   }
 
+
+  // ── STATS ──
+  if(view==="stats"){
+    const allKeys=Object.keys(hist).filter(k=>(hist[k]||[]).length>0).sort();
+    const hasStats=allKeys.length>0&&exs.length>0;
+    h+=`<div class="stats-eyebrow">PREHĽAD CVIKOV</div>
+    <div class="stats-title">Tvoje cviky</div>`;
+    if(!hasStats){
+      h+=`<div class="empty-state"><div class="empty-icon">${I.clip}</div><div class="empty-title">Zatiaľ žiadne dáta</div><div class="empty-desc">Začni cvičiť a štatistiky sa začnú plniť.</div></div>`;
+    } else {
+      const totalDays=allKeys.length;
+      // Group by category
+      const byCat={};
+      for(const ex of exs){
+        if(!byCat[ex.cat])byCat[ex.cat]=[];
+        byCat[ex.cat].push(ex);
+      }
+      for(const[cat,list]of Object.entries(byCat)){
+        h+=`<div class="category-label" style="margin-top:18px;margin-bottom:10px">${cat}</div>`;
+        for(const ex of list){
+          const done=allKeys.filter(k=>(hist[k]||[]).includes(ex.id)).length;
+          const pct=totalDays>0?Math.round(done/totalDays*100):0;
+          const col=pct>=70?'var(--green)':pct>=40?'var(--accent)':'var(--danger)';
+          h+=`<div class="stat-ex-card">
+            <div class="stat-ex-row">
+              <div class="stat-ex-name">${ex.name}</div>
+              <div class="stat-ex-pct" style="color:${col}">${pct}%</div>
+            </div>
+            <div class="stat-ex-meta">${done} z ${totalDays} dní</div>
+            <div class="bar-track" style="margin-top:8px"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div>
+          </div>`;
+        }
+      }
+      h+=`<p style="font-size:12px;color:var(--text-3);text-align:center;margin-top:20px">Počítané z ${totalDays} ${totalDays===1?'dňa':totalDays<5?'dní':'dní'} aktivity</p>`;
+    }
+  }
 
   // ── MANAGE ──
   if(view==="manage"){
